@@ -5,11 +5,15 @@
  * 
  */
 
+use MapasCulturais\App;
 use MapasCulturais\i;
 
 $this->import('
     mc-card
 ');
+
+$app = App::i();
+$redirectTo = $app->auth->isUserAuthenticated() ? $app->createUrl('site','index') : $app->createUrl('auth','?redirectTo=');
 ?>
 
 <div class="confirm-email">
@@ -26,5 +30,5 @@ $this->import('
     </mc-card>
 </div>
 <script>
-    setTimeout(() => window.location.href = '<?= $app->createUrl('auth', '?redirectTo=') ?>', 4000);
+    setTimeout(() => window.location.href = '<?= $redirectTo ?>', 4000);
 </script>
