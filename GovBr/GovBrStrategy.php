@@ -282,7 +282,6 @@ class GovBrStrategy extends OpauthStrategy
 		$app = App::i();
 
 		$auth_data = $response['auth']['info'];
-		$userinfo = (object) $response['auth']['raw'];
 
 		$app->hook("entity(Agent).get(lockedFields)", function(&$lockedFields) use ($app){
 			$config = $app->config['auth.config']['strategies']['govbr'];
@@ -310,7 +309,12 @@ class GovBrStrategy extends OpauthStrategy
 				$_agent->setAsUserProfile();
 			}
 		}
-		
+	}
+
+	public static function updateFile($user, $response)
+	{
+		$userinfo = (object) $response['auth']['raw'];
+
 		self::getFile($user->profile, $userinfo->picture, $userinfo->access_token);
 	}
 
