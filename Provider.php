@@ -1525,6 +1525,8 @@ class Provider extends \MapasCulturais\AuthProvider {
         if($this->_validateResponse()){
             // e ainda não existe um usuário no sistema
             $user = $this->_getAuthenticatedUser();
+            $isNewUser = empty($user);
+
             $response = $this->_getResponse();
             if(!$user){
                 $user = $this->createUser($response);
@@ -1537,6 +1539,10 @@ class Provider extends \MapasCulturais\AuthProvider {
             if($provider_class = $response['auth']['provider']."Strategy"){
                 if(method_exists($provider_class, "verifyUpdateData")){
                     $provider_class::verifyUpdateData($user, $response);
+                }
+
+                if ($isNewUser && method_exists($provider_class, "updateFile")) {
+                    $provider_class::updateFile($user, $response);
                 }
             }
 
