@@ -559,7 +559,7 @@ class Provider extends \MapasCulturais\AuthProvider {
         ];
 
         // validate captcha
-        if ((!isset($_POST["g-recaptcha-response"]) || empty($_POST["g-recaptcha-response"])) || !$app->verifyCaptcha($_POST['g-recaptcha-response'])) {
+        if ((!isset($_POST["g-recaptcha-response"]) || empty($_POST["g-recaptcha-response"])) || !$this->verifyCaptcha($_POST['g-recaptcha-response'])) {
             array_push($errors['captcha'], i::__('Captcha incorreto, tente novamente!', 'multipleLocal'));
             return [
                 'success' => false,
@@ -726,7 +726,7 @@ class Provider extends \MapasCulturais\AuthProvider {
             'sendEmail' => []
         ];
 
-        if ((!isset($_POST["g-recaptcha-response"]) || empty($_POST["g-recaptcha-response"])) || !$app->verifyCaptcha($_POST['g-recaptcha-response'])) {
+        if ((!isset($_POST["g-recaptcha-response"]) || empty($_POST["g-recaptcha-response"])) || !$this->verifyCaptcha($_POST['g-recaptcha-response'])) {
             array_push($errors['captcha'], i::__('Captcha incorreto, tente novamente!', 'multipleLocal'));
             return [
                 'success' => false,
@@ -1016,7 +1016,7 @@ class Provider extends \MapasCulturais\AuthProvider {
         ];
 
         // Se não recebemos o token, não há motivo para avançar para a verificação
-        if ((!isset($_POST["g-recaptcha-response"]) || empty($_POST["g-recaptcha-response"])) || !$app->verifyCaptcha($_POST['g-recaptcha-response'])) {
+        if ((!isset($_POST["g-recaptcha-response"]) || empty($_POST["g-recaptcha-response"])) || !$this->verifyCaptcha($_POST['g-recaptcha-response'])) {
             array_push($errors['captcha'], i::__('Captcha incorreto, tente novamente!', 'multipleLocal'));
             return [
                 'success' => false,
@@ -1744,6 +1744,71 @@ class Provider extends \MapasCulturais\AuthProvider {
                 $config = array_replace_recursive($config, $theme_config['auth.config']);
             }
         }
+    }
+
+    function verifyCaptcha(string $token = '')
+    {
+        // If we don't receive the token, there is no reason to advance to the verification
+        if (empty($token)) {
+            return false;
+        }
+
+        $app = App::i();
+
+        // In this point we are sure that the provider was defined
+        $provider = $app->config['captcha']['provider'];
+
+        // If there are no providers available, it means that there was an error in the configuration
+        // Because if it is the new configuration, the provider is mandatory
+        // If it is the old one, the provider is defined by default
+        if (!isset($app->config['captcha']['providers']) || empty($app->config['captcha']['providers'])) {
+            throw new \Exception('No captcha providers defined');
+        }
+
+        // Is necessary to validate if the defined provider exists, because it may have been defined incorrectly in the new configuration
+        if (!in_array($provider, array_keys($app->config['captcha']['providers']))) {
+            return false;
+        }
+
+        // Using the defined provider
+        $selectedProvider = $app->config['captcha']['providers'][$provider];
+
+        // If the provider does not have the token validation address, do not advance
+        if (empty($selectedProvider['verify'])) {
+            throw new \Exception('No verify url defined for the selected provider');
+        }
+
+        // If the provider does not have the secret, do not advance or throw an exception?
+        if (empty($selectedProvider['secret'])) {
+            throw new \Exception('No secret defined for the selected provider');
+        }
+
+        // ############################# Start the verification process #############################
+        // Prepare the request
+        $options = [
+            "http" => [
+                "header" => "Content-type: application/x-www-form-urlencoded\r\n",
+                "method" => "POST",
+                "content" => http_build_query([
+                    'secret' => $selectedProvider['secret'],
+                    'response' => $token
+                ])
+            ]
+        ];
+
+        // Create the context
+        $context = stream_context_create($options);
+
+        // Send the request
+        $result = file_get_contents($selectedProvider['verify'], false, $context);
+
+        if ($result === false) {
+            return false;
+        }
+
+        $result = json_decode($result);
+
+        return $result->success;
     }
 
 }
